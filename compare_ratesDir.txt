@@ -1,0 +1,82 @@
+#! /usr/bin/python
+import sys,os
+
+usage = """
+Usage:
+compare_rates dir_log1 dir_log2
+"""
+
+class bcolors:
+    BLUE = '\033[34m'
+    YELLOW = '\033[33m'
+    RED = '\033[31m'
+    ENDC = '\033[0m'
+
+    def disable(self):
+        self.BLUE = ''
+        self.YELLOW = ''
+        self.RED = ''
+        self.ENDC = ''
+
+def readPaths(dirname):
+    a,b = os.popen2("ls -1 " + dirname + "/*")
+    filenames = b.readlines()
+    paths = {}
+    for filename in filenames:
+        file = open(filename.split("\n")[0], "r");
+        lines = file.readlines()
+        store = False
+        for i, l in enumerate(lines):
+            l = l.split("\n")[0]
+            if (store and l != ""):
+                fields = l.split()
+                if (fields[-1] != "Name"):
+                    if(fields[-1] in paths.keys()):
+                        paths[fields[-1]] = [paths[fields[-1]][0] + int(fields[4]), paths[fields[-1]][1] + int(fields[5]), paths[fields[-1]][2] + int(fields[6])]
+                    else:
+                        paths[fields[-1]] = [int(fields[4]), int(fields[5]), int(fields[6])]
+            else:
+                store = False
+        
+            if (l == "TrigReport ---------- Path   Summary ------------"):
+                store = True
+        file.close()
+
+    return paths
+
+#------#
+# MAIN #
+#------#
+
+if (len(sys.argv) != 3):
+    print usage
+    sys.exit(-1)
+
+paths_v1 = readPaths(sys.argv[1])
+paths_v2 = readPaths(sys.argv[2])
+
+print "%s %s %s  %s"%("PATH".ljust(100), "  Evts old", "  Evts new", "  Rel diff")
+
+sortedPaths = sorted(paths_v1.keys())
+
+for path in sortedPaths:
+    if (float(paths_v1[path][0]) != 0):
+        diff = float(paths_v2[path][0] - paths_v1[path][0])/float(paths_v1[path][0]);
+    else:
+        diff = 0
+
+    s = ""
+    if (paths_v1[path][2] != 0 or paths_v1[path][2] != 0):
+        s = s + bcolors.BLUE
+    if (abs(diff) > 0.15):
+        s = s + bcolors.YELLOW
+    if (abs(diff) > 0.3):
+        s = s + bcolors.RED
+
+#    print s + "%s %10d %10d  %10.2f"%(path.ljust(100), paths_v1[path][0],  paths_v2[path][0], diff) + bcolors.ENDC
+#    print s + "%s"%(path.ljust(100)) + bcolors.ENDC
+#    print s + "%10d"%(paths_v1[path][0]) + bcolors.ENDC
+#    print s + "%10d"%(paths_v2[path][0]) + bcolors.ENDC
+#    print s + "%10.2f"%(diff) + bcolors.ENDC
+
+
